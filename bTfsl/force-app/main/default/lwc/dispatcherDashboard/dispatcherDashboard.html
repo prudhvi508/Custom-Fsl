@@ -1,0 +1,106 @@
+<template>
+    <lightning-card title="Dispatcher Dashboard" icon-name="standard:service_appointment">
+        <!-- <div class="slds-box slds-m-around_medium"> -->
+            <div class="slds-grid slds-grid_vertical-align-center slds-p-around_small slds-m-around_medium">
+                <div class="slds-col slds-size_1-of-3 slds-col_bump-right">
+                    <!-- <div class="slds-box">  -->
+                        <lightning-combobox
+                            label="Filter by Status"
+                            value={selectedStatus}
+                            options={statusOptions}
+                            onchange={handleStatusChange}
+                            class="slds-m-bottom_small slds-m-around_medium">
+                        </lightning-combobox>
+                    <!-- </div> -->
+                </div> 
+                <div class="slds-col slds-size_1-of-3 slds-grid slds-gutter slds-grid_align-center slds-grid_align-space">
+                    <div class="slds-col slds-size_x-small">
+                        <lightning-input type="date" name="startDate" label="Start Date" value={searchStartDate} onchange={handleStartDateChange}></lightning-input>
+                    </div>
+                    <div class="slds-col slds-size_x-small">
+                        <lightning-input type="date" name="endDate" label="End Date" value={searchEndDate} onchange={handleEndDateChange}></lightning-input>
+                    </div>    
+                </div>
+                <div class="slds-col slds-size_1-of-3 slds-grid slds-gutters slds-grid_align-space">
+                    <div class="slds-col slds-col_bump-left slds-grid_align-center slds-p-around_small slds-m-top_medium">
+                        <lightning-button label="Search" variant="brand" onclick={handleSearch}></lightning-button>
+                    </div>
+                    <div class="slds-col slds-col_bump-left">
+                        <div class="slds-badge slds-theme_info slds-p-around_small slds-float_right slds-m-top_medium">
+                            Today's Appointments: {todayAppointmentCount}
+                        </div>
+                    </div>
+                </div> 
+            </div>
+        <!-- </div> -->
+        <!-- <div class="slds-clearfix slds-m-around_medium">
+            <div class="slds-float_right">
+                <div class="slds-badge slds-theme_info slds-p-around_x-small slds-float_right slds-m-top_small">
+                    Today's Appointments: {todayAppointmentCount}
+                </div>
+            </div>
+            <div class="slds-size_1-of-7 slds-float_left">
+                <lightning-input type="date" name="startDate" label="Start Date" value={searchDate} onchange={handleDateChange}></lightning-input>
+            </div>
+            <div class="slds-size_1-of-3 slds-align_absolute-center">
+                <lightning-button label="Search" variant="brand" onclick={handleSearch}></lightning-button>
+            </div>
+        </div>
+        <!-Status Filter -->
+        <!-- <div class="slds-size_1-of-3 slds-m-bottom_medium">
+            <lightning-combobox
+                label="Filter by Status"
+                value={selectedStatus}
+                options={statusOptions}
+                onchange={handleStatusChange}
+                class="slds-m-bottom_small slds-m-around_medium">
+            </lightning-combobox>
+        </div> --> 
+
+        <div class="slds-grid slds-wrap slds-gutters slds-m-around_medium">
+            <!-- Work Orders Panel -->
+            <div class="slds-col slds-size_1-of-1">
+                <lightning-card title="Work Orders">
+                    <template if:true={filteredWorkOrders}>
+                        <lightning-datatable
+                            class ="slds-scrollable slds-table_col-bordered slds-table_bordered slds-m-around_medium"
+                            key-field="Id"
+                            data={workOrders}
+                            columns={workOrderColumns}
+                             hide-checkbox-column ="true"
+                            onrowaction={handleWorkOrderAction}>
+                        </lightning-datatable>
+                    </template>
+                    <template if:true={isLoading}>
+                        <lightning-spinner alternative-text="Loading"></lightning-spinner>
+                    </template>
+                </lightning-card>
+            </div>
+        </div>
+    </lightning-card>
+
+    <!-- Resource Selection Modal -->
+    <template if:true={showModal}>
+        <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open">
+            <div class="slds-modal__container">
+                <header class="slds-modal__header">
+                    <h2 class="slds-modal__title">Select a Resource for Assignment</h2>
+                </header>
+                <div class="slds-modal__content">
+                    <lightning-datatable
+                        class ="slds-scrollable slds-table_col-bordered slds-table_bordered slds-m-around_medium"
+                        key-field="Id"
+                        data={resources}
+                        columns={resourceColumns}
+                         hide-checkbox-column ="true"
+                        onrowaction={handleResourceAction}>
+                    </lightning-datatable>
+                </div>
+                <footer class="slds-modal__footer">
+                    <lightning-button variant="neutral" label="Cancel" onclick={closeModal}></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+</template>

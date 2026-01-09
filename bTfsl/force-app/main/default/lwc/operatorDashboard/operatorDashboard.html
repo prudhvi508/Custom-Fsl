@@ -1,0 +1,510 @@
+<template>
+    <div class="slds-card slds-p-around_medium">
+        <!-- Header -->
+        <div class="slds-grid slds-grid_align-spread slds-m-bottom_medium">
+            <h1 class="slds-text-heading_medium">Operator Dashboard</h1>
+            <div>
+                <lightning-button 
+                    label="Timesheets" 
+                    variant="brand" 
+                    class="slds-m-right_small"
+                    onclick={handleTimesheetsClick}
+                    disabled={isLeaveDisabled}>
+                </lightning-button>
+                <lightning-button 
+                    label="Leave" 
+                    onclick={handleLeaveClick} 
+                    variant="brand"
+                    disabled={isLeaveDisabled}>
+                </lightning-button>
+            </div>
+        </div>
+
+        <!-- Resource Selector -->
+        <div class="slds-size_1-of-3 slds-m-bottom_medium">
+            <lightning-combobox
+                name="viewAsResource"
+                label="Select Resource"
+                value={selectedResourceId}
+                placeholder="Select a Resource"
+                options={resourceOptions}
+                onchange={handleResourceChange}>
+            </lightning-combobox>
+        </div>
+
+        <!-- Spinner -->
+        <template if:true={isLoading}>
+            <lightning-spinner alternative-text="Loading appointments" size="medium"></lightning-spinner>
+        </template>
+
+        <!-- Error Message -->
+        <template if:true={error}>
+            <div class="slds-notify slds-notify_alert slds-theme_alert-texture slds-theme_error" role="alert">
+                <span class="slds-assistive-text">Error</span>
+                <h2>{error}</h2>
+            </div>
+        </template>
+
+        <!-- Appointment Cards -->
+        <template if:true={appointments.length}>
+            <template for:each={appointments} for:item="appt">
+                <div key={appt.Id} class="slds-box slds-m-bottom_small">
+
+                    <!-- Grid with 2 Columns -->
+                    <div class="slds-grid slds-wrap">
+
+                        <!-- Left Column: Details -->
+                        <div class="slds-col slds-size_1-of-2 slds-p-around_medium">
+                            <p><strong>Appointment Number:</strong> {appt.Name}</p>
+                            <p><strong>Start:</strong> {appt.ScheduledStart}</p>
+                            <p><strong>End:</strong> {appt.ScheduledEnd}</p>
+                        </div>
+
+                        <!-- Right Column: Centered Buttons -->
+                        <div class="slds-col slds-size_1-of-2 slds-align_absolute-center slds-p-around_medium">
+                            <div class="slds-button-group" role="group">
+                                <lightning-button 
+                                    label="Related Work" 
+                                    data-id={appt.Id} 
+                                    variant="brand" 
+                                    onclick={handleRelatedWorkClick}
+                                    class="slds-m-right_small">
+                                </lightning-button>
+                                <lightning-button 
+                                    label="Job Action" 
+                                    data-id={appt.Id} 
+                                    variant="brand" 
+                                    onclick={handleJobClick}>
+                                </lightning-button>
+                                <lightning-button 
+                                    class="slds-p-left_medium"
+                                    label="Reschedule" 
+                                    data-id={appt.Id}
+                                    onclick={handleRescheduleclick} 
+                                    variant="brand">
+                                </lightning-button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            </template>
+        </template>
+
+
+        <template if:true={appointments}>
+            <template if:false={appointments.length}>
+                <p class="slds-text-color_weak">No appointments found.</p>
+            </template>
+        </template>
+    </div>
+
+    <!-- Leave Modal -->
+    <template if:true={showLeaveModal}>
+        <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open">
+            <div class="slds-modal__container">
+                   
+                 <!-- Close (X) Button -->
+                <button class="slds-button slds-modal__close slds-button_icon" title="Close" onclick={closeLeaveModal}>
+                    <lightning-icon icon-name="utility:close" alternative-text="close" size="small"></lightning-icon>
+                </button>
+
+                <header class="slds-modal__header">
+                    <h2 class="slds-modal__title">Create Leave</h2>
+                </header>
+
+                <div class="slds-modal__content slds-p-around_medium">
+                    <lightning-input
+                        type="date"
+                        label="Start Date"
+                        name="start"
+                        value={leaveStartDate}
+                        onchange={handleInputChange}>
+                    </lightning-input>
+                    <lightning-input
+                        type="date"
+                        label="End Date"
+                        name="end"
+                        value={leaveEndDate}
+                        onchange={handleInputChange}>
+                    </lightning-input>
+                    <lightning-combobox
+                        name="type"
+                        label="Type of Absence"
+                        placeholder="Select Type"
+                        options={typeOptions}
+                        value={selectedType}
+                        onchange={handleInputChange}
+                        class="slds-m-bottom_small">
+                    </lightning-combobox>
+                    <lightning-textarea
+                        label="Reason"
+                        name="reason"
+                        value={leaveReason}
+                        onchange={handleInputChange}>
+                    </lightning-textarea>
+                </div>
+
+                <footer class="slds-modal__footer ">
+                    <lightning-button variant="neutral" label="Cancel" onclick={closeLeaveModal} class="slds-m-right_small"></lightning-button>
+                    <lightning-button variant="brand" label="Submit" onclick={submitLeave}></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+
+    <!-- Timesheets Modal (content to be handled in JS) -->
+    <template if:true={showTimesheetsModal}>
+        <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_large">
+            <div class="slds-modal__container">
+
+                <!-- Close (X) Button -->
+                <button class="slds-button slds-modal__close slds-button_icon" title="Close" onclick={closeTimesheetsModal}>
+                    <lightning-icon icon-name="utility:close" alternative-text="close" size="small"></lightning-icon>
+                </button>
+
+                <!-- Header -->
+                <header class="slds-modal__header">
+                    <h2 class="slds-modal__title">Timesheets for Selected Resource</h2>
+                </header>
+
+                <!-- Body -->
+                <div class="slds-modal__content slds-p-around_medium">
+                    <template if:true={timesheets.length}>
+                        <lightning-datatable
+                            key-field="Id"
+                            data={timesheets}
+                            columns={timesheetColumns}
+                            hide-checkbox-column>
+                        </lightning-datatable>
+                    </template>
+
+                    <template if:true={timesheets}>
+                        <template if:false={timesheets.length}>
+                            <p class="slds-text-color_weak">No timesheets found for this resource.</p>
+                        </template>
+                    </template>
+                </div>
+
+                <!-- Footer -->
+                <footer class="slds-modal__footer">
+                    <lightning-button variant="neutral" label="Close" onclick={closeTimesheetsModal}></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+
+
+    <!-- Job Action Modal (Required + Consumed Products) -->
+    <template if:true={showJobModal}>
+        <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_large">
+            <div class="slds-modal__container">
+
+                <!-- Close (X) Button -->
+                <button class="slds-button slds-modal__close slds-button_icon" title="Close" onclick={closeJobModal}>
+                    <lightning-icon icon-name="utility:close" alternative-text="close" size="small"></lightning-icon>
+                </button>
+
+                <!-- Modal Header -->
+                <header class="slds-modal__header">
+                    <h2 class="slds-modal__title">Job Details - Products</h2>
+                </header>
+
+                <!-- Modal Body -->
+                <div class="slds-modal__content slds-p-around_medium">
+                    
+                    <!-- Required Products Section -->
+                    <h3 class="slds-text-heading_small slds-m-bottom_small">Required Products</h3>
+                    <template if:true={requiredProducts.length}>
+                        <lightning-datatable
+                            class ="slds-scrollable slds-table_col-bordered slds-table_bordered slds-m-around_medium"
+                            key-field="Id"
+                            data={requiredProducts}
+                            columns={requiredProductColumns}
+                            hide-checkbox-column>
+                        </lightning-datatable>
+                    </template>
+                    <template if:false={requiredProducts.length}>
+                        <p>No Required Products found.</p>
+                    </template>
+
+                    <!-- Add Button + Consumed Products Heading -->
+                    <div class="slds-grid slds-align-start slds-m-vertical_medium">
+    
+                        <div class="slds-m-right_small">
+                            <template if:true={isFormVisible}>
+                                <lightning-button-icon 
+                                    icon-name="utility:close" 
+                                    alternative-text="Close Form" 
+                                    title="Close" 
+                                    onclick={toggleFormVisibility} 
+                                    variant="brand">
+                                </lightning-button-icon>
+                            </template>
+                            <template if:false={isFormVisible}>
+                                <lightning-button-icon 
+                                    icon-name="utility:add" 
+                                    alternative-text="Add Ordered Product" 
+                                    title="Add" 
+                                    onclick={handleAddConsumedProduct} 
+                                    variant="brand">
+                                </lightning-button-icon>
+                            </template>
+                        </div>
+
+                        <!-- Label beside button -->
+                        <div class="slds-text-heading_small slds-align-middle">
+                            Consumed Products
+                        </div>
+
+                    </div>
+
+
+                    <!-- Consumed Product Creation Form -->
+                    <template if:true={showConsumedProductForm}>
+                        <div class="slds-box slds-theme_shade slds-m-bottom_medium">
+                          <div class="slds-grid slds-gutters">
+                            <div class="slds-col slds-size_1-of-2">   
+                                <lightning-record-picker
+                                    label="Product Item"
+                                    placeholder="Search Product Item..."
+                                    object-api-name="Product_Item__c"
+                                    value={productItemSearchText}
+                                    onchange={handleProductItemChange}>
+                                </lightning-record-picker>
+                            </div>
+                            <div class="slds-col slds-size_1-of-2">   
+                                <lightning-input 
+                                    name="QuantityConsumed" 
+                                    type="number" 
+                                    label="Quantity Consumed" 
+                                    value={quantityConsumed} 
+                                    onchange={handleConsumedChange}>
+                                </lightning-input>
+                            </div>
+                          </div> 
+                            <lightning-textarea 
+                                name="Description" 
+                                label="Description" 
+                                value={consumedDescription} 
+                                onchange={handleConsumedInputChange}>
+                            </lightning-textarea>
+                            <div class="slds-align_absolute-center">                               
+                                <lightning-button 
+                                    variant="brand" 
+                                    label="Submit" 
+                                    class="slds-p-top_medium" 
+                                    onclick={submitConsumedProduct}>
+                                </lightning-button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Display Created Consumed Products -->
+                    
+                        <lightning-datatable
+                            class ="slds-scrollable slds-table_col-bordered slds-table_bordered slds-m-around_medium"
+                            key-field="Id"
+                            data={createdConsumedProducts}
+                            columns={consumedProductColumns}
+                            hide-checkbox-column>
+                        </lightning-datatable>
+                    
+                </div>
+
+                <!-- Modal Footer -->
+                <footer class="slds-modal__footer">
+                    <lightning-button variant="neutral" label="Close" onclick={closeJobModal}></lightning-button>
+                </footer>
+
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+
+
+    <!-- Related Work Modal -->
+    <template if:true={showRelatedModal}>
+        <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open slds-modal_large">
+            <div class="slds-modal__container">
+
+                <!-- Header with Close Button -->
+                <header class="slds-modal__header">
+                    <button class="slds-button slds-button_icon slds-modal__close" title="Close" onclick={closeRelatedModal}>
+                        <lightning-icon icon-name="utility:close" alternative-text="Close" size="small"></lightning-icon>
+                    </button>
+                    <h2 class="slds-modal__title">Related Work Details</h2>
+                </header>
+
+                <!-- Body -->
+                <div class="slds-modal__content slds-p-around_medium">
+
+                    <!-- Work Order Details -->
+                   <template if:true={relatedWorkDetails}>
+                        <div class="slds-grid slds-wrap">
+                            <div class="slds-col slds-size_1-of-2">
+                                <p><strong>Case:</strong> {relatedWorkData.case}</p></strong>
+                                <p><strong>Asset:</strong> {relatedWorkData.asset}</p>
+                                <p><strong>Work Order:</strong> {relatedWorkData.Name}</p>
+                            </div>  
+                            <div class="slds-col slds-size_1-of-2">
+                                <p><strong>Service Appointment Number:</strong>{CurrentAppointmentName}</p>
+                                <p><strong>Account:</strong> {relatedWorkData.account}</p>
+                                <p><strong>Contact:</strong> {relatedWorkData.contact}</p>
+                            </div>  
+                        </div>
+                    </template>
+
+                    <template if:false={relatedWorkDetails}>
+                        <p>No related data found.</p>
+                    </template>
+
+                    <hr class="slds-m-vertical_medium"/>
+
+                    <!-- Add Timesheet Header Row -->
+                    <div class="slds-grid slds-align-start slds-m-bottom_medium">
+                        <div class="slds-m-right_small">
+                            <template if:true={isSheetsFormVisible}>
+                                <lightning-button-icon 
+                                    icon-name="utility:close" 
+                                    alternative-text="Close Form" 
+                                    title="Close" 
+                                    onclick={toggleTimesheetsFormVisibility} 
+                                    variant="brand">
+                                </lightning-button-icon>
+                            </template>
+                            <template if:false={isSheetsFormVisible}>
+                                <lightning-button-icon 
+                                    icon-name="utility:add" 
+                                    alternative-text="Add Timesheets" 
+                                    title="Add" 
+                                    onclick={handleAddTimesheet} 
+                                    variant="brand">
+                                </lightning-button-icon>
+                            </template>
+                        </div>
+                        <div class="slds-text-heading_small slds-align-middle">Timesheets</div>
+                    </div>
+
+                    <!-- Timesheet Form (conditionally rendered) -->
+                    <template if:true={showTimesheetForm}>
+                        <div class="slds-box slds-theme_shade slds-m-bottom_medium">
+                           <div class="slds-grid slds-gutters">
+                                <div class="slds-col slds-size_1-of-2">
+                                    <lightning-input
+                                        type="date"
+                                        name="Work_Date__c"
+                                        label="Work Date"
+                                        value={timesheetForm.Work_Date__c}
+                                        onchange={handleTimesheetInputChange}>
+                                    </lightning-input>
+                                </div>
+                                <div class="slds-col slds-size_1-of-2">
+                                    <lightning-combobox
+                                        name="Work_Status__c"
+                                        label="Work Status"
+                                        value={selectedStatus}
+                                        placeholder="Select Status"
+                                        options={statusOptions}
+                                        onchange={handleStatusChange}>
+                                    </lightning-combobox>
+                                </div>   
+                            </div>
+                            <div class="slds-grid slds-gutters">
+                                <div class="slds-col slds-size_1-of-3">   
+                                    <lightning-input
+                                        type="time"
+                                        name="Start_Time__c"
+                                        label="Start Time"
+                                        value={timesheetForm.Start_Time__c}
+                                        onchange={handleTimesheetInputChange}>
+                                    </lightning-input>
+                                </div>
+                                <div class="slds-col slds-size_1-of-3"> 
+                                    <lightning-input
+                                        type="time"
+                                        name="End_Time__c"
+                                        label="End Time"
+                                        value={timesheetForm.End_Time__c}
+                                        onchange={handleTimesheetInputChange}>
+                                    </lightning-input>
+                                </div>
+                                <div class="slds-col slds-size_1-of-3"> 
+                                    <lightning-input
+                                        type="number"
+                                        name="Break_Duration__c"
+                                        label="Break Duration (in minutes)"
+                                        value={timesheetForm.Break_Duration__c}
+                                        onchange={handleTimesheetInputChange}>
+                                    </lightning-input>
+                                </div>    
+                            </div>
+                            <lightning-textarea
+                                name="Description__c"
+                                label="Description"
+                                value={timesheetForm.Description__c}
+                                onchange={handleTimesheetInputChange}>
+                            </lightning-textarea>
+
+                            <div class="slds-align_absolute-center slds-p-top_medium">
+                                <lightning-button variant="brand" label="Submit" onclick={submitTimesheet}></lightning-button>
+                                <lightning-button variant="neutral" label="Cancel" onclick={cancelTimesheetForm} class="slds-m-left_small"></lightning-button>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Show only created timesheet -->
+                    
+                        <lightning-datatable
+                            class ="slds-scrollable slds-table_col-bordered slds-table_bordered slds-m-around_medium"
+                            key-field="Id"
+                            data={relatedTimesheets}
+                            columns={timesheetColumns}
+                            hide-checkbox-column>
+                        </lightning-datatable>
+
+                        <div class="slds-align_absolute-center">
+                          <c-upload-photo record-id={CurrentAppointmentId}></c-upload-photo>
+                        </div>
+                </div>
+                <!-- Footer -->
+                <footer class="slds-modal__footer">
+                    <lightning-button variant="neutral" label="Close" onclick={closeRelatedModal}></lightning-button>
+                </footer>
+
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+    
+    <template if:true={showRescheduleModal}>
+        <section role="dialog" tabindex="-1" class="slds-modal slds-fade-in-open">
+            <div class="slds-modal__container">
+                <!-- Top-right Close Button -->
+                <button class="slds-button slds-modal__close" onclick={closeRescheduleModal}>
+                    <lightning-icon icon-name="utility:close" alternative-text="Close" size="small"></lightning-icon>
+                </button>
+
+                <!-- Modal Content -->
+                <header class="slds-modal__header">
+                    <h2 class="slds-text-heading_medium">Reschedule Appointment</h2>
+                </header>
+
+                <div class="slds-modal__content slds-p-around_medium">
+                    <lightning-input type="datetime" name="startDate" label="Start Date" value={startDate} onchange={handleRescheduleInputChange}></lightning-input>
+                    <lightning-input type="datetime" name="endDate" label="End Date" value={endDate} onchange={handleRescheduleInputChange}></lightning-input>
+                    <lightning-textarea name="reason" label="Reason" value={reason} onchange={handleRescheduleInputChange}></lightning-textarea>
+                </div>
+
+                <!-- Footer Buttons Centered -->
+                <footer class="slds-modal__footer slds-text-align_center">
+                    <lightning-button variant="neutral" label="Cancel" onclick={closeRescheduleModal}></lightning-button>
+                    <lightning-button variant="brand" label="Submit" class="slds-m-left_small" onclick={handleRescheduleSubmit}></lightning-button>
+                </footer>
+            </div>
+        </section>
+        <div class="slds-backdrop slds-backdrop_open"></div>
+    </template>
+</template>

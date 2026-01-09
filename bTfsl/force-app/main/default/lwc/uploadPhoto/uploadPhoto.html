@@ -1,0 +1,12 @@
+<template>
+    <lightning-card title="Upload Photo Of Work">
+        <lightning-file-upload
+            label="Upload Photo"
+            name="photoUploader"
+            accept=".jpg,.jpeg,.png"
+            record-id={recordId}
+            onuploadfinished={handleUploadFinished}
+            multiple="true">
+        </lightning-file-upload>
+    </lightning-card>
+</template>
